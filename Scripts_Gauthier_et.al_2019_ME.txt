@@ -1,0 +1,323 @@
+################################################
+#title           :Complete_pipeline
+#description     :This script combine all scripts for the analyses undertaken for the paper entitled : Contrasting genomic and phenotypic outcomes of hybridization between pairs of mimetic butterfly taxa across a suture zone
+#author		 : Jeremy Gauthier
+#email	: jeremy.gauthier@inria.fr
+#date            :10.27.2019
+################################################
+
+
+###########################################################
+############ Population genetics analyses #################
+###########################################################
+
+#DiscoSNP-RAD
+run_discoSnpRad.sh -r fof_ithomia -p default_discorad_it
+sh discoRAD_finalization.sh -f default_discorad_it_k_31_c_2_D_10_P_5_m_5_coherent.fa -s rconnector
+
+run_discoSnpRad.sh -r fof_Oleria -p default_discorad_ol
+sh discoRAD_finalization.sh -f default_discorad_ol_k_31_c_2_D_10_P_5_m_5_coherent.fa -s rconnector
+
+#Filters
+#remove samples with missing data above 90%
+vcftools --vcf default_discorad_it_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.vcf --missing-indv
+vcftools --vcf default_discorad_ol_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.vcf --missing-indv
+#keep SNPs shared
+vcftools --vcf default_discorad_it_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.vcf --maf 0.01 --max-missing 0.8 --remove-indels --recode --out ithomia_105s_miss080_maf001_default_discorad_it_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters
+vcftools --vcf default_discorad_ol_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.vcf --maf 0.01 --max-missing 0.8 --remove-indels --recode --out oleria_142s_miss080_maf001_default_discorad_ol_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters
+
+#Structure tool usage
+#Keep only 1 SNP by locus using custom script
+random_select_snp_by_loci.sh ithomia_105s_miss080_maf001_default_discorad_it_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.vcf
+random_select_snp_by_loci.sh oleria_142s_miss080_maf001_default_discorad_ol_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.vcf
+#formating using custom script
+vcf2structure.sh 1SNP_ithomia_105s_miss080_maf001_default_discorad_it_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.vcf
+vcf2structure.sh 1SNP_oleria_142s_miss080_maf001_default_discorad_ol_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.vcf
+#run Structure using several K and replicates
+launch_all_structure_it.sh 1SNP_ithomia_105s_miss080_maf001_default_discorad_it_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.str
+launch_all_structure_ol.sh 1SNP_oleria_142s_miss080_maf001_default_discorad_ol_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.str
+
+#BGC tool usage
+#formating using custom script
+vcf2bgc.sh ithomia_105s_miss080_maf001_default_discorad_it_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.vcf
+vcf2bgc.sh oleria_142s_miss080_maf001_default_discorad_ol_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.vcf
+
+#run BGC tool
+./local/bgcdist/bgc -a p0.bgc -b p1.bgc -h pH.bgc -F bgc_output_ith -O 0 -x 50000 -n 10000 -p 2 -q 1 -N 1 -E 0.0001 -m 0 -t 5 -d 1 -s 1 -D 0.5 -I 0 -u 0.1 -i 1
+#extract statistics
+./local/bgcdist/estpost -i bgc_output_ith.hdf5 -p LnL -o ithomia_ln1 -s 0
+./local/bgcdist/estpost -i bgc_output_ith.hdf5 -p alpha -o ithomia_a1 -s 0
+./local/bgcdist/estpost -i bgc_output_ith.hdf5 -p beta -o ithomia_b1 -s 0
+./local/bgcdist/estpost -i bgc_output_ith.hdf5 -p hi -o ithomia_hi1 -s 0
+./local/bgcdist/estpost -i bgc_output_ith.hdf5 -p interspecific-het -o ithomia_het1 -s 0
+
+#run BGC tool
+./local/bgcdist/bgc -a p0.bgc -b p1.bgc -h pH.bgc -F bgc_output_ole -O 0 -x 100000 -n 30000 -p 2 -q 1 -N 1 -E 0.0001 -m 0 -t 5 -d 1 -s 1 -D 0.5 -I 0 -u 0.1 -i 1
+#extract statistics
+./local/bgcdist/estpost -i bgc_output_ole.hdf5 -p LnL -o oleria_ln1 -s 0
+./local/bgcdist/estpost -i bgc_output_ole.hdf5 -p alpha -o oleria_a1 -s 0
+./local/bgcdist/estpost -i bgc_output_ole.hdf5 -p beta -o oleria_b1 -s 0
+./local/bgcdist/estpost -i bgc_output_ole.hdf5 -p hi -o oleria_hi1 -s 0
+./local/bgcdist/estpost -i bgc_output_ole.hdf5 -p interspecific-het -o oleria_het1 -s 0
+
+
+#GEMMA
+#formating using custom script
+vcf2gemma.sh ithomia_105s_miss080_maf001_default_discorad_it_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.vcf list_83samples_sex list_83samples_14ph list_83samples
+vcf2gemma.sh oleria_142s_miss080_maf001_default_discorad_ol_k_31_c_2_D_10_P_5_m_5_coherent_sorted_with_clusters.recode.vcf list_85samples_sex list_85samples_18ph list_85samples
+
+#run gemma
+gemma -bfile ithomia_plink_format -gk 1 -o relatedness_ith
+gemma -bfile ithomia_plink_format /
+	-k ./output/relatedness_ith.cXX.txt /
+	-c ith_covar.txt /
+	-lmm 1 -n 1 2 3 4 5 6 7 8 9 10 11 12 13 14 -o ith_14ph_output -miss 0.20 -maf 0.01 -hwe 0
+
+gemma -bfile oleria_plink_format -gk 1 -o relatedness_ole
+gemma -bfile oleria_plink_format /
+	-k ./output/relatedness_ole.cXX.txt /
+	-c ole_covar.txt /
+	-lmm 1 -n 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 -o ole_18ph_output -miss 0.20 -maf 0.01 -hwe 0
+
+#GEMMA outlier identification
+
+#FST with vcftools
+vcftools --vcf ith_default_discorad_k_31_coherent_sorted_with_clusters_SNP_2.vcf --max-missing 0.80 --maf 0.01 --weir-fst-pop ith_p0_list --weir-fst-pop ith_p1_list
+vcftools --vcf ole_default_discorad_k_31_coherent_sorted_with_clusters_SNP_2.vcf --max-missing 0.80 --maf 0.01 --weir-fst-pop ole_p0_list --weir-fst-pop ole_p1_list
+
+###########################################################
+######################## Figures ##########################
+###########################################################
+
+#R scripts
+#FIGURE 1 map localisations
+
+library("ggplot2")
+library("ggmap")
+
+read.table("ithomia_loc_GPS.txt",h=F)->gps
+
+ggmap(map) + 
+  geom_point(data = gps,aes(x = gps[,5], y = gps[,4],colour=gps[,3]), size = 6, shape = 20) + 
+  scale_colour_manual(values = c("red", "blue","purple4"))
+
+read.table("oleria_loc_GPS.txt",h=F)->gps
+
+ggmap(map) +
+  geom_point(data = gps,aes(x = gps[,5], y = gps[,4],colour=gps[,3]), size = 6, shape = 20) +
+  scale_colour_manual(values = c("forestgreen", "gold", "greenyellow"))
+
+#FIGURE_2 script STRUCTURE part
+read.table("ithomia_structure_k2k3.txt",h=F)->ith
+read.table("oleria_structure_k2k3.txt",h=F)->ole
+
+par(mfrow=c(4,1),mai=c(0.1, 0.3, 0.1, 0),omi=c(0.2,0.1,0.1,0.1))
+barplot(t(as.matrix(data.frame(ith[,c(3,4,5)]))),col = c("purple4","red","blue"), space = c(0,0),las=2, cex.names=0.2,cex.axis=0.8)
+barplot(t(as.matrix(data.frame(ith[,c(1,2)]))),col = c("blue","red"), space = c(0,0),las=2, cex.names=0.2,cex.axis=0.8)
+barplot(t(as.matrix(data.frame(ole[,c(3,4,5)]))),col = c("gold","forestgreen", "greenyellow"), space = c(0,0),las=2, cex.names=0.2,cex.axis=0.8)
+barplot(t(as.matrix(data.frame(ole[,c(1,2)]))),col = c("forestgreen","gold"), space = c(0,0),las=2, cex.names=0.2,cex.axis=0.8)
+
+# Adegenet analyses and FIGURE_2 script
+ithomia<-read.structure("Ithomia_104good_1SNPlocus_miss03_maf002_h_filtered_b1_discorad_R1_k_31_c_3_D_0_P_10_b_1_coherent_sorted_with_clusters.recode.vcf_2.str",n.ind=104,n.loc=11788,onerowperind=FALSE,col.lab=1,col.pop=2,col.others=NULL,row.marknames=NULL,NA.char=-9,ask=F) 
+oleria<-read.structure("Oleria_139good_1SNPlocus_miss03_maf002_h_filtered_b1_discorad_R1_k_31_c_3_D_0_P_10_b_1_coherent_sorted_with_clusters.vcf.recode.vcf_2.str",n.ind=139,n.loc=14243,onerowperind=FALSE,col.lab=1,col.pop=2,col.others=NULL,row.marknames=NULL,NA.char=-9,ask=F) 
+
+sansna<-scaleGen(ithomia,scale=F, NA.method="mean")
+pca1 <- dudi.pca(sansna,cent=F,scale=F,scannf=FALSE,nf=3)
+barplot(pca1$eig[1:50],main="PCA eigenvalues", col=heat.colors(50))
+s.label(pca1$li)
+s.label(pca1$li,clabel = 0)
+s.class(pca1$li, pop(ithomia),xax=1,yax=2, xlim = c(-35,20),ylim = c(-10,5),col=c("red","red","purple4","purple4","purple4","blue","blue"),axesell = FALSE, cstar=0,cellipse=2)
+add.scatter.eig(pca1$eig[1:20], 3,1,2)
+
+sansna2<-scaleGen(oleria,scale=F, NA.method="mean")
+pca2 <- dudi.pca(sansna2,cent=F,scale=F,scannf=FALSE,nf=3)
+barplot(pca2$eig[1:50],main="PCA eigenvalues", col=heat.colors(50))
+s.label(pca2$li)
+s.label(pca2$li,clabel = 0)
+s.class(pca2$li, pop(oleria), xax=1,yax=2, xlim = c(-40,40),ylim = c(-20,20),col=c("forestgreen", "forestgreen", "greenyellow", "greenyellow", "gold"),axesell = FALSE, cstar=0,cellipse=2)
+add.scatter.eig(pca2$eig[1:20], 3,1,2)
+
+# BGC analyses
+#BGC MCMC verification
+read.table("Ithomia_ln1",h=F)->ith_ln1
+plot(ith_ln1[,1])
+read.table("Oleria_ln1",h=F)->ole_ln1
+plot(ole_ln1[,1])
+
+#import data Ithomia
+read.table("ithomia_a1",h=T,sep=",")->ith_alpha
+read.table("ithomia_b1",h=T,sep=",")->ith_beta
+read.table("ithomia_list_bgc_snp",h=T)->ith_pos
+read.table("ith_out.weir.fst",h=T)->ith_fst
+read.table("ith_14ph_output.assoc.txt",h=T)->ith_gwas
+#merge datasets
+ith_ab<-data.frame(ith_pos,ith_alpha,ith_beta)
+ith_abfst<-merge(ith_fst,ith_ab,by.x=c("CHROM","POS"), by.y=c("CHROM","POS"))
+ith_abfstgwas<-merge(ith_abfst,ith_gwas,by.x=c("CHROM","POS"), by.y=c("chr","ps"))
+
+#import data Oleria
+read.table("oleria_a1",h=T,sep=",")->ole_alpha
+read.table("oleria_b1",h=T,sep=",")->ole_beta
+read.table("oleria_list_bgc_snp",h=T)->ole_pos
+read.table("ole_out.weir.fst",h=T)->ole_fst
+read.table("ole_18ph_output.assoc.txt",h=T)->ole_gwas
+#merge datasets
+ole_ab<-data.frame(ole_pos,ole_alpha,ole_beta)
+ole_abfst<-merge(ole_fst,ole_ab,by.x=c("CHROM","POS"), by.y=c("CHROM","POS"))
+ole_abfstgwas<-merge(ole_abfst,ole_gwas,by.x=c("CHROM","POS"), by.y=c("chr","ps"))
+
+#BGC outliers
+ith_alow=ith_abfstgwas[(ith_abfstgwas$X0.950_CI_LB > 0),]
+ith_ahigh=ith_abfstgwas[(ith_abfstgwas$X0.950_CI_UB < 0),]
+ith_ahighlow<-rbind(ith_alow,ith_ahigh)
+ith_blow=ith_abfstgwas[(ith_abfstgwas$X0.950_CI_LB.1 > 0),]
+ith_bhigh=ith_abfstgwas[(ith_abfstgwas$X0.950_CI_UB.1 < 0),]
+ith_bhighlow<-rbind(ith_blow,ith_bhigh)
+
+ole_alow=ole_abfstgwas[(ole_abfstgwas$X0.950_CI_LB > 0),]
+ole_ahigh=ole_abfstgwas[(ole_abfstgwas$X0.950_CI_UB < 0),]
+ole_ahighlow<-rbind(ole_alow,ole_ahigh)
+ole_blow=ole_abfstgwas[(ole_abfstgwas$X0.950_CI_LB.1 > 0),]
+ole_bhigh=ole_abfstgwas[(ole_abfstgwas$X0.950_CI_UB.1 < 0),]
+ole_bhighlow<-rbind(ole_blow,ole_bhigh)
+
+#FST outliers
+ith_out_fst_95<-ith_abfstgwas[(ith_abfstgwas$WEIR_AND_COCKERHAM_FST) >= quantile(sample(ith_abfstgwas$WEIR_AND_COCKERHAM_FST, 100000,replace=TRUE),probs = 0.95),]
+ole_out_fst_95<-ole_abfstgwas[(ole_abfstgwas$WEIR_AND_COCKERHAM_FST) >= quantile(sample(ole_abfstgwas$WEIR_AND_COCKERHAM_FST, 100000,replace=TRUE),probs = 0.95),]
+
+#GWAS outliers
+#outliers with bonferonni correction
+ith_out_gwas_bonf<-ith_abfstgwas[(ith_abfstgwas$p_wald) <= 0.05/(17779*14),]
+ole_out_gwas_bonf<-ole_abfstgwas[(ole_abfstgwas$p_wald) <= 0.05/(15894*18),]
+#outliers with fdr correction
+ith_abfstgwas$fdr<-((17779*14)/0.05)*ith_abfstgwas$p_wald
+ole_abfstgwas$fdr<-((15894*18)/0.05)*ole_abfstgwas$p_wald
+ith_out_gwas_fdr<-ith_abfstgwas[(ith_abfstgwas$fdr) <= 0.05,]
+ole_out_gwas_fdr<-ole_abfstgwas[(ole_abfstgwas$fdr) <= 0.05,]
+#merge GWAS outliers with Bonferroni and fdr method
+ith_out_gwas_merged<-merge(ith_out_gwas_bonf,ith_out_gwas_fdr,by.x=c("CHROM","POS"), by.y=c("CHROM","POS"))
+ole_out_gwas_merged<-merge(ole_out_gwas_bonf,ole_out_gwas_fdr,by.x=c("CHROM","POS"), by.y=c("CHROM","POS"))
+
+
+#FIGURE_3 script
+par(mfrow=c(3,2),mai=c(0.6, 0.8, 0.1, 0),omi=c(0.2,0.1,0.1,0.1))
+
+#Plot alpha / beta
+df2<-data.frame(ith_abfstgwas$median,ith_abfstgwas$median.1)
+x2 <- densCols(df2[,1],df2[,2], colramp=colorRampPalette(c("grey", "black")))
+plot(df2[,1],df2[,2], pch=20, col=x2, cex=1,xlim = c(-6,6),ylim = c(-9,9),ylab=expression(paste("Genomic cline rate (", beta, ")")),xlab=expression(paste("Genomic cline center (", alpha, ")")))
+testpts<-structure(list(x = ith_alow$median, y = ith_alow$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="blue")
+testpts<-structure(list(x = ith_ahigh$median, y = ith_ahigh$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="blue")
+
+df2<-data.frame(ole_abfstgwas$median,ole_abfstgwas$median.1)
+x2 <- densCols(df2[,1],df2[,2], colramp=colorRampPalette(c("grey", "black")))
+plot(df2[,1],df2[,2], pch=20, col=x2, cex=1,xlim = c(-6,6),ylim = c(-9,9),ylab=expression(paste("Genomic cline rate (", beta, ")")),xlab=expression(paste("Genomic cline center (", alpha, ")")))
+testpts<-structure(list(x = ole_alow$median, y = ole_alow$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="blue")
+testpts<-structure(list(x = ole_ahigh$median, y = ole_ahigh$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="blue")
+
+testpts<-structure(list(x = ole_blow$median, y = ole_blow$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="green")
+testpts<-structure(list(x = ole_bhigh$median, y = ole_bhigh$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="green")
+
+#Plot alpha / FST
+df2<-data.frame(ith_abfstgwas$WEIR_AND_COCKERHAM_FST,ith_abfstgwas$median)
+df2.2<-df2[df2[,1]>=-0.1,]
+x2 <- densCols(df2.2[,1],df2.2[,2], colramp=colorRampPalette(c("grey", "black")))
+plot(df2.2[,1],df2.2[,2], pch=20, col=x2, cex=1,xlim = c(-0.1,1),ylim = c(-6,6),ylab=expression(paste("Genomic cline center (", alpha, ")" )), xlab=expression(paste("F"[ST])))
+testpts<-structure(list(x = ith_alow$WEIR_AND_COCKERHAM_FST, y = ith_alow$median, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="blue")
+testpts<-structure(list(x = ith_ahigh$WEIR_AND_COCKERHAM_FST, y = ith_ahigh$median, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="blue")
+abline(v = quantile(ith_abfstgwas$WEIR_AND_COCKERHAM_FST,probs = 0.95), col="orange")
+
+df2<-data.frame(ole_abfstgwas$WEIR_AND_COCKERHAM_FST,ole_abfstgwas$median)
+df2.2<-df2[df2[,1]>=-0.1,]
+x2 <- densCols(df2.2[,1],df2.2[,2], colramp=colorRampPalette(c("grey", "black")))
+plot(df2.2[,1],df2.2[,2], pch=20, col=x2, cex=1,xlim = c(-0.1,1),ylim = c(-6,6),ylab=expression(paste("Genomic cline center (", alpha, ")" )), xlab=expression(paste("F"[ST])))
+testpts<-structure(list(x = ole_alow$WEIR_AND_COCKERHAM_FST, y = ole_alow$median, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="blue")
+testpts<-structure(list(x = ole_ahigh$WEIR_AND_COCKERHAM_FST, y = ole_ahigh$median, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="blue")
+abline(v = quantile(ole_abfstgwas$WEIR_AND_COCKERHAM_FST,probs = 0.95), col="orange")
+
+#Plot beta / FST
+df2<-data.frame(ith_abfstgwas$WEIR_AND_COCKERHAM_FST,ith_abfstgwas$median.1)
+df2.2<-df2[df2[,1]>=-0.1,]
+x2 <- densCols(df2.2[,1],df2.2[,2], colramp=colorRampPalette(c("grey", "black")))
+plot(df2.2[,1],df2.2[,2], pch=20, col=x2, cex=1,xlim = c(-0.1,1),ylim = c(-9,9),ylab=expression(paste("Genomic cline rate (", beta, ")" )), xlab=expression(paste("F"[ST])))
+testpts<-structure(list(x = ith_blow$WEIR_AND_COCKERHAM_FST, y = ith_blow$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="green")
+testpts<-structure(list(x = ith_bhigh$WEIR_AND_COCKERHAM_FST, y = ith_bhigh$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="green")
+abline(v = quantile(ith_abfstgwas$WEIR_AND_COCKERHAM_FST,probs = 0.95), col="orange")
+
+df2<-data.frame(ole_abfstgwas$WEIR_AND_COCKERHAM_FST,ole_abfstgwas$median.1)
+df2.2<-df2[df2[,1]>=-0.1,]
+x2 <- densCols(df2.2[,1],df2.2[,2], colramp=colorRampPalette(c("grey", "black")))
+plot(df2.2[,1],df2.2[,2], pch=20, col=x2, cex=1,xlim = c(-0.1,1),ylim = c(-9,9),ylab=expression(paste("Genomic cline rate (", beta, ")" )), xlab=expression(paste("F"[ST])))
+testpts<-structure(list(x = ole_blow$WEIR_AND_COCKERHAM_FST, y = ole_blow$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="green")
+testpts<-structure(list(x = ole_bhigh$WEIR_AND_COCKERHAM_FST, y = ole_bhigh$median.1, .Names = c("x", "y")))
+chuld <- lapply(testpts,"[",chull(testpts))
+polygon(chuld,lty=1,border="green")
+abline(v = quantile(ole_abfstgwas$WEIR_AND_COCKERHAM_FST,probs = 0.95), col="orange")
+
+#FIGURE_4 script
+read.table("ithomia_wing_PCA.txt",h=F)->ithomia
+plot(ithomia[,3],ithomia[,4],col=ithomia[,1])
+read.table("oleria_wing_PCA.txt",h=F)->oleria
+plot(ithomia[,2],ithomia[,3],col=ithomia[,1])
+
+#FIGURE_5 script
+#Plot GWAS / FST
+
+par(mfrow=c(1,2))
+plot(ith_abfstgwas$WEIR_AND_COCKERHAM_FST,-log10(ith_abfstgwas$p_wald),pch=20,xlim = c(-0.05,1),ylim = c(0,130),col="grey",xlab=expression(paste("F"[ST])))
+par(new=TRUE,ann=TRUE)
+plot(ith_out_gwas_fdr$WEIR_AND_COCKERHAM_FST,-log10(ith_out_gwas_fdr$p_wald),pch=20,xlim = c(-0.05,1),ylim = c(0,130),col="gold",xaxt="n", yaxt="n",ylab="",xlab="",bty ="n")
+par(new=TRUE,ann=TRUE)
+plot(ith_out_fst_95$WEIR_AND_COCKERHAM_FST,-log10(ith_out_fst_95$p_wald),pch=20,xlim = c(-0.05,1),ylim = c(0,130),col="orange",xaxt="n", yaxt="n",ylab="",xlab="",bty ="n")
+par(new=TRUE,ann=TRUE)
+plot(ith_out_gwasfst$WEIR_AND_COCKERHAM_FST,-log10(ith_out_gwasfst$p_wald),pch=20,xlim = c(-0.05,1),ylim = c(0,130),col="red",xaxt="n", yaxt="n",ylab="",xlab="",bty ="n")
+
+plot(ole_abfstgwas$WEIR_AND_COCKERHAM_FST,-log10(ole_abfstgwas$p_wald),pch=20,xlim = c(-0.05,1),ylim = c(0,130),col="grey",xlab=expression(paste("F"[ST])))
+par(new=TRUE,ann=TRUE)
+plot(ole_out_gwas_fdr$WEIR_AND_COCKERHAM_FST,-log10(ole_out_gwas_fdr$p_wald),pch=20,xlim = c(-0.05,1),ylim = c(0,130),col="gold",xaxt="n", yaxt="n",ylab="",xlab="",bty ="n")
+par(new=TRUE,ann=TRUE)
+plot(ole_out_fst_95$WEIR_AND_COCKERHAM_FST,-log10(ole_out_fst_95$p_wald),pch=20,xlim = c(-0.05,1),ylim = c(0,130),col="orange",xaxt="n", yaxt="n",ylab="",xlab="",bty ="n")
+par(new=TRUE,ann=TRUE)
+plot(ole_out_gwasfst$WEIR_AND_COCKERHAM_FST,-log10(ole_out_gwasfst$p_wald),pch=20,xlim = c(-0.05,1),ylim = c(0,130),col="red",xaxt="n", yaxt="n",ylab="",xlab="",bty ="n")
+
+#correlation test
+cor.test(ole_out_gwasfst$WEIR_AND_COCKERHAM_FST,-log10(ole_out_gwasfst$p_wald),method="spearman")
+
+#LDA and Supplementary Figure 2
+library("MASS")
+read.table("ithomia_pca.txt",h=F)->mydata
+fit <- lda(mydata[,1] ~ mydata[,2] + mydata[,3] + mydata[,4] + mydata[,5] + mydata[,6] + mydata[,7] + mydata[,8] + mydata[,9] + mydata[,10] + mydata[,11] + mydata[,12] + mydata[,13] + mydata[,14] + mydata[,15] + mydata[,16] + mydata[,17] + mydata[,18] + mydata[,19] + mydata[,20] + mydata[,21] + mydata[,22] + mydata[,23] + mydata[,24] + mydata[,25] + mydata[,26] + mydata[,27] + mydata[,28] + mydata[,29] + mydata[,30] + mydata[,31] + mydata[,32] + mydata[,33] + mydata[,34] + mydata[,35] + mydata[,36] + mydata[,37] + mydata[,38] + mydata[,39] + mydata[,40] + mydata[,41] + mydata[,42] + mydata[,43] + mydata[,44] + mydata[,45] + mydata[,46] + mydata[,47] + mydata[,48] + mydata[,49] + mydata[,50] + mydata[,51], data=mydata)
+plot(fit, panel = function(x, y, ...) points(x, y, ...),col = as.integer(mydata[,1]), pch = 19)
+
+read.table("oleria_pca.txt",h=F)->mydata
+fit <- lda(mydata[,1] ~ mydata[,2] + mydata[,3] + mydata[,4] + mydata[,5] + mydata[,6] + mydata[,7] + mydata[,8] + mydata[,9] + mydata[,10] + mydata[,11] + mydata[,12] + mydata[,13] + mydata[,14] + mydata[,15] + mydata[,16] + mydata[,17] + mydata[,18] + mydata[,19] + mydata[,20] + mydata[,21] + mydata[,22] + mydata[,23] + mydata[,24] + mydata[,25] + mydata[,26] + mydata[,27] + mydata[,28] + mydata[,29] + mydata[,30] + mydata[,31] + mydata[,32] + mydata[,33] + mydata[,34] + mydata[,35] + mydata[,36] + mydata[,37] + mydata[,38] + mydata[,39] + mydata[,40] + mydata[,41] + mydata[,42] + mydata[,43] + mydata[,44] + mydata[,45] + mydata[,46] + mydata[,47] + mydata[,48] + mydata[,49] + mydata[,50] + mydata[,51], data=mydata)
+plot(fit, panel = function(x, y, ...) points(x, y, ...),col = as.integer(mydata[,1]), pch = 19)
+
+
+
